@@ -504,6 +504,7 @@ class DetInferencer(BaseInferencer):
         print_result: bool = False,
         no_save_pred: bool = False,
         pred_out_dir: str = '',
+        encode_masks: bool = False, 
         **kwargs,
     ) -> Dict:
         """Process the predictions and visualization results from ``forward``
@@ -527,6 +528,8 @@ class DetInferencer(BaseInferencer):
             pred_out_dir: Dir to save the inference results w/o
                 visualization. If left as empty, no file will be saved.
                 Defaults to ''.
+            encode_masks: if true will encode masks in COCO fashion,
+                otherwise it will just return the boolean array
 
         Returns:
             dict: Inference and visualization results with key ``predictions``
@@ -564,7 +567,8 @@ class DetInferencer(BaseInferencer):
     #  Maybe should include model name, timestamp, filename, image info etc.
     def pred2dict(self,
                   data_sample: DetDataSample,
-                  pred_out_dir: str = '') -> Dict:
+                  pred_out_dir: str = '',
+                  encode_masks:bool=False) -> Dict:
         """Extract elements necessary to represent a prediction into a
         dictionary.
 
@@ -614,11 +618,14 @@ class DetInferencer(BaseInferencer):
                     # Fake bbox, such as the SOLO.
                     bboxes = mask2bbox(masks.cpu()).numpy().tolist()
                     result['bboxes'] = bboxes
-                encode_masks = encode_mask_results(pred_instances.masks)
-                for encode_mask in encode_masks:
-                    if isinstance(encode_mask['counts'], bytes):
-                        encode_mask['counts'] = encode_mask['counts'].decode()
-                result['masks'] = encode_masks
+                if encode_masks:
+                    encode_masks = encode_mask_results(pred_instances.masks)
+                    for encode_mask in encode_masks:
+                        if isinstance(encode_mask['counts'], bytes):
+                            encode_mask['counts'] = encode_mask['counts'].decode()
+                    result['masks'] = encode_masks
+                else:
+                    result['masks'] = pred_instances.masks
 
         if 'pred_panoptic_seg' in data_sample:
             if VOID is None:
